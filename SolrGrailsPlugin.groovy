@@ -23,7 +23,6 @@
 
 import org.codehaus.groovy.grails.commons.metaclass.*
 import org.codehaus.groovy.grails.commons.GrailsApplication
-import org.apachedomainDesc.solr.client.solrj.impl.*
 import org.apache.solr.common.*
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.client.solrj.SolrQuery
@@ -42,7 +41,7 @@ class SolrGrailsPlugin {
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "1.1 > *"
     // the other plugins this plugin depends on
-    def dependsOn = [domainClass: '1.1 > *'] //, hibernate: '1.1 > *']
+    def dependsOn = [:] //domainClass: '1.1 > *', hibernate: '1.1 > *']
     // resources that are excluded from plugin packaging
     def pluginExcludes = [
       "grails-app/views/error.gsp",
@@ -95,8 +94,8 @@ open source search server through the SolrJ library.
     def doWithDynamicMethods = { ctx ->
 
       application.domainClasses.each { dc ->
-  
-        if(GrailsClassUtils.getStaticPropertyValue(dc.clazz, "enableSolrSearch")) {       
+
+        if(GrailsClassUtils.getStaticPropertyValue(dc.clazz, "enableSolrSearch")) {
           def domainDesc = application.getArtefact(DomainClassArtefactHandler.TYPE, dc.clazz.name)          
         
           // define indexSolr() method for all domain classes
@@ -149,8 +148,8 @@ open source search server through the SolrJ library.
             def prefix = ""
             def solrFieldName
             def clazz = (delegate.class.name == 'java.lang.Class') ? delegate : delegate.class
-            def prop = clazz.declaredFields.find{ field -> field.name == name} 
-            
+            def prop = clazz.declaredFields.find{ field -> field.name == name}
+
             if(!prop && name.contains(".")) {
               prefix = name[0..name.lastIndexOf('.')]     
               name = name.substring(name.lastIndexOf('.')+1)    
@@ -169,6 +168,7 @@ open source search server through the SolrJ library.
             solrFieldName = (typeMap) ? "${prefix}${name}${typeMap}" : "${prefix}${name}"
             
             // check for annotations
+            //no Annotation - no data
             if(prop?.isAnnotationPresent(Solr)) {
               def anno = prop.getAnnotation(Solr)
               if(anno.field())
@@ -177,7 +177,9 @@ open source search server through the SolrJ library.
                 solrFieldName = "${prefix}${name}_t"
               else if(anno.ignore())
                 solrFieldName = null;                
-            } 
+            } else {
+                solrFieldName = null
+            }
 
             return solrFieldName
           }
@@ -253,12 +255,12 @@ open source search server through the SolrJ library.
         } 
         else if(delegateDomainOjbect."${prop.name}" != null) {
           def fieldName = delegateDomainOjbect.solrFieldName(prop.name);
-          
+
           // fieldName may be null if the ignore annotion is used, not the best way to handle but ok for now
           if(fieldName) {
             def docKey = prefix + fieldName                
             def docValue = delegateDomainOjbect.properties[prop.name] 
-          
+
             // Removed because of issues with stale indexing when composed index changes
             // Recursive indexing of composition fields
             //if(GrailsClassUtils.getStaticPropertyValue(docValue.class, "enableSolrSearch") && depth < 3) {
@@ -271,10 +273,16 @@ open source search server through the SolrJ library.
             // instead of the composition logic above, if the class is a domain class
             // then set the value to the Solr Id
             // TODO - reconsider this indexing logic as a whole
-            if(DomainClassArtefactHandler.isDomainClass(docValue.class))
-              doc.addField(docKey, SolrUtil.getSolrId(docValue))
-            else
+            if(DomainClassArtefactHandler.isDomainClass(docValue.class)){
+                if(fieldName == "location"){
+                    docKey = "store"
+                    doc.addField(docKey, "${docValue.latitude}, ${docValue.longitude}")
+                } else {
+                    doc.addField(docKey, SolrUtil.getSolrId(docValue))
+                }
+            } else {
               doc.addField(docKey, docValue)
+            }
             
             // if the annotation asTextAlso is true, then also index this field as a text type independant of how else it's
             // indexed. The best way to handle the need to do this would be the properly configure the schema.xml file but
