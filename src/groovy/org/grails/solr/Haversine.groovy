@@ -28,23 +28,23 @@ package org.grails.solr
  */
 class Haversine {
     static final double Rk = 6371
-  static final double Rm = 3963.205
-  
-  static double computeMi(p1_lat, p1_lng, p2_lat, p2_lng) {
-    compute(p1_lat, p1_lng, p2_lat, p2_lng, Rm)
-  }
+    static final double Rm = 3963.205
 
-  static double computeKm(p1_lat, p1_lng, p2_lat, p2_lng) {
-    compute(p1_lat, p1_lng, p2_lat, p2_lng, Rk)
-  }
-  
+    static double computeMi(p1_lat, p1_lng, p2_lat, p2_lng) {
+        compute(p1_lat, p1_lng, p2_lat, p2_lng, Rm)
+    }
+
+    static double computeKm(p1_lat, p1_lng, p2_lat, p2_lng) {
+        compute(p1_lat, p1_lng, p2_lat, p2_lng, Rk)
+    }
+
     static double compute(p1_lat, p1_lng, p2_lat, p2_lng, rad) {
         def dLat = Math.toRadians(p2_lat - p1_lat);
         def dLon = Math.toRadians(p2_lng - p1_lng);
-        def a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos( Math.toRadians(p1_lat) ) *
-                Math.cos( Math.toRadians(p2_lat) ) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        def c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        def a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(p1_lat)) *
+                Math.cos(Math.toRadians(p2_lat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        def c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         def d = rad * c;
         return d
     }

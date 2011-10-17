@@ -25,98 +25,99 @@ package org.grails.solr
 
 class Listing {
 
-  static enableSolrSearch = true
+    static enableSolrSearch = true
 
-  String title
-  String categories
+    String title
+    String categories
 
-  int sicCode
-  String sicDescription
+    int sicCode
+    String sicDescription
 
-  String address1
-  String address2
-  String city
-  String state
-  String postalCode
-  String phone
-  String country = "US"
-  double latitude
-  double longitude
+    String address1
+    String address2
+    String city
+    String state
+    String postalCode
+    String phone
+    String country = "US"
+    double latitude
+    double longitude
 
-  float averageRating = 0
-  Date averageLastUpdated
+    float averageRating = 0
+    Date averageLastUpdated
 
-  Date dateCreated
-  Date lastUpdated
+    Date dateCreated
+    Date lastUpdated
 
-  // Enhanced Listing attributes
+    // Enhanced Listing attributes
 
-  URL url
-  String email
-  String leadershipContact
-  String longDescription
-  String serviceDetails
- 
+    URL url
+    String email
+    String leadershipContact
+    String longDescription
+    String serviceDetails
 
-  def replaceCategories(String[] cats) {
-    categories = ""
-    def i = 0
-    //if(cats instanceof List) {
-    cats?.each {
-      categories = categories + ((i++ == 0) ? "*${it}*" : ",*${it}*")
-    }
-    //} else {
-    ///  categories = "*${cats}*"
-    //}
-  }
 
-  def addCategory(String cat) {
-    if(cat && !categories?.contains("*${cat}*")) {
-      def cats = getCategoriesAsList()
-      cats << cat
-      this.replaceCategories((String[]) cats.toArray())
-    }
-  }
-
-  def getCategoriesAsList = {
-    def list = []
-    def cats = categories?.split(",")
-    cats.each {
-      list.add(it - "*" - "*")
+    def replaceCategories(String[] cats) {
+        categories = ""
+        def i = 0
+        //if(cats instanceof List) {
+        cats?.each {
+            categories = categories + ((i++ == 0) ? "*${it}*" : ",*${it}*")
+        }
+        //} else {
+        ///  categories = "*${cats}*"
+        //}
     }
 
-    return list
+    def addCategory(String cat) {
+        if (cat && !categories?.contains("*${cat}*")) {
+            def cats = getCategoriesAsList()
+            cats << cat
+            this.replaceCategories((String[]) cats.toArray())
+        }
+    }
 
-  }
+    def getCategoriesAsList = {
+        def list = []
+        def cats = categories?.split(",")
+        cats.each {
+            list.add(it - "*" - "*")
+        }
 
-  def indexSolrLatitude(doc) {
-    doc.addField(this.solrFieldName("latitude"), latitude )
-    doc.addField("latitude_rad_d", Math.toRadians( latitude ))
-  }
-  def indexSolrLongitude(doc) {
-    doc.addField(this.solrFieldName("longitude"), longitude )
-    doc.addField("longitude_rad_d", Math.toRadians( longitude ))
-  }
+        return list
 
-  static constraints = {
-  title(blank: false, maxSize:50)
-  url(nullable:true, url: true)
-  categories(nullable: true)
+    }
 
-  address1(blank: false, maxSize:50)
-  address2(nullable: true, maxSize:50)
-  city(blank: false, maxSize:50)
-  state(blank: false, maxSize:25)
-  postalCode(blank: false, maxSize:9)
-  phone(nullable:true, maxSize:25)
+    def indexSolrLatitude(doc) {
+        doc.addField(this.solrFieldName("latitude"), latitude)
+        doc.addField("latitude_rad_d", Math.toRadians(latitude))
+    }
 
-  longDescription(nullable: true, maxSize:2500)
-  serviceDetails(nullable: true, maxSize:2500)
-  averageLastUpdated(nullable: true)
+    def indexSolrLongitude(doc) {
+        doc.addField(this.solrFieldName("longitude"), longitude)
+        doc.addField("longitude_rad_d", Math.toRadians(longitude))
+    }
 
-  sicCode(nullable:true)
-  sicDescription(nullable:true)
-  leadershipContact(nullable:true)
-  email(nullable:true, email:true)
-  }
+    static constraints = {
+        title(blank: false, maxSize: 50)
+        url(nullable: true, url: true)
+        categories(nullable: true)
+
+        address1(blank: false, maxSize: 50)
+        address2(nullable: true, maxSize: 50)
+        city(blank: false, maxSize: 50)
+        state(blank: false, maxSize: 25)
+        postalCode(blank: false, maxSize: 9)
+        phone(nullable: true, maxSize: 25)
+
+        longDescription(nullable: true, maxSize: 2500)
+        serviceDetails(nullable: true, maxSize: 2500)
+        averageLastUpdated(nullable: true)
+
+        sicCode(nullable: true)
+        sicDescription(nullable: true)
+        leadershipContact(nullable: true)
+        email(nullable: true, email: true)
+    }
 }

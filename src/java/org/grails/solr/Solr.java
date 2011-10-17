@@ -22,6 +22,7 @@
 */
 
 package org.grails.solr;
+
 import java.lang.annotation.*;
 
 /**
@@ -31,7 +32,10 @@ import java.lang.annotation.*;
 @Target(ElementType.FIELD)
 public @interface Solr {
     String field() default "";
+
     boolean asText() default false;
-    boolean asTextAlso() default false; 
+
+    boolean asTextAlso() default false;
+
     boolean ignore() default false;
 }

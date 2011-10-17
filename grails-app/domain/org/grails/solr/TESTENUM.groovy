@@ -23,20 +23,21 @@
 
 package org.grails.solr
 enum TESTENUM {
-  NEW('New'),
-  ACTIVE('Active'),
-  DISABLED('Disabled')
+    NEW('New'),
+    ACTIVE('Active'),
+    DISABLED('Disabled')
 
-  private final String value
+    private final String value
 
-  public TESTENUM(String value) {
-    this.value = value
-  }
+    public TESTENUM(String value) {
+        this.value = value
+    }
 
-  public String getKey() { return name() }
-  public String getValue() { return toString() }
+    public String getKey() { return name() }
 
-  public String toString() {
-    return value
-  }
+    public String getValue() { return toString() }
+
+    public String toString() {
+        return value
+    }
 }
