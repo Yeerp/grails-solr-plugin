@@ -77,6 +77,9 @@ class SolrService {
      * @return Map with 'resultList' - list of Maps representing results and 'queryResponse' - Solrj query result
      */
     def search(SolrQuery solrQuery) {
+        if (log.isInfoEnabled()) {
+            log.info("Solr search with wquery: ${solrQuery.toString()}")
+        }
         QueryResponse rsp = getServer().query(solrQuery);
 
 
@@ -106,6 +109,17 @@ class SolrService {
 
     }
 
+    SolrQuery createSpatialQuery(String location, String radius, Integer max, Integer offset){
+        SolrQuery query = new SolrQuery("{!func}geodist()")
+        query.setRows(max)
+        query.setStart(offset)
+        query.setParam("pt", location)
+        query.setParam("sfield", "store")
+        query.setParam("fl", "*,score")
+        query.setParam("d", radius)
+        query.addFilterQuery("{!geofilt}")
+        return query
+    }
     /**
      * Constitute SolrQuery for a haversine based spatial search. This method returns
      * the SolrQuery object in case you need to manipulate it further (add facets, etc)
@@ -123,45 +137,45 @@ class SolrService {
      * @param lng_field SOLR index field for latitude in radians (optional, default: longitude_d)
      * @return SolrQuery object representing this spatial query
      */
-    SolrQuery getSpatialQuery(query, lat, lng, range, start = 0, rows = 10, sort = "asc", funcQuery = "", radius = 3963.205, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
-        def lat_rad = Math.toRadians(lat)
-        def lng_rad = Math.toRadians(lng)
-        def hsin = "hsin(${lat_rad},${lng_rad},${lat_field},${lng_field},${radius})"
-        def order = [asc: SolrQuery.ORDER.asc, desc: SolrQuery.ORDER.desc]
-
-        if (funcQuery != "")
-            funcQuery = "${funcQuery},"
-
-        SolrQuery solrQuery = new SolrQuery((query && query.trim()) ? "(${query}) AND _val_:\"sum(${funcQuery}${hsin})\"" : "_val_:\"sum(${funcQuery}${hsin})\"")
-        solrQuery.addFilterQuery("{!frange l=0 u=${range}}${hsin}")
-        solrQuery.setStart(start)
-        solrQuery.setRows(rows)
-        solrQuery.addSortField("score", order[sort])
-        return solrQuery
-    }
+//    SolrQuery getSpatialQuery(query, lat, lng, range, start = 0, rows = 10, sort = "asc", funcQuery = "", radius = 3963.205, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
+//        def lat_rad = Math.toRadians(lat)
+//        def lng_rad = Math.toRadians(lng)
+//        def hsin = "hsin(${lat_rad},${lng_rad},${lat_field},${lng_field},${radius})"
+//        def order = [asc: SolrQuery.ORDER.asc, desc: SolrQuery.ORDER.desc]
+//
+//        if (funcQuery != "")
+//            funcQuery = "${funcQuery},"
+//
+//        SolrQuery solrQuery = new SolrQuery((query && query.trim()) ? "(${query}) AND _val_:\"sum(${funcQuery}${hsin})\"" : "_val_:\"sum(${funcQuery}${hsin})\"")
+//        solrQuery.addFilterQuery("{!frange l=0 u=${range}}${hsin}")
+//        solrQuery.setStart(start)
+//        solrQuery.setRows(rows)
+//        solrQuery.addSortField("score", order[sort])
+//        return solrQuery
+//    }
 
     /**
      * Same as getSpatialQuery but executes query
      * @return Map with 'resultList' - list of Maps representing results and 'queryResponse' - Solrj query result
      */
-    def querySpatial(query, lat, lng, range, start = 0, rows = 10, sort = "asc", funcQuery = "", radius = 3963.205, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
-        def solrQuery = getSpatialQuery(query, lat, lng, range, start, rows, sort, funcQuery, radius, lat_field, lng_field)
-        return querySpatial(solrQuery, lat, lng, lat_field, lng_field)
-    }
+//    def querySpatial(query, lat, lng, range, start = 0, rows = 10, sort = "asc", funcQuery = "", radius = 3963.205, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
+//        def solrQuery = getSpatialQuery(query, lat, lng, range, start, rows, sort, funcQuery, radius, lat_field, lng_field)
+//        return querySpatial(solrQuery, lat, lng, lat_field, lng_field)
+//    }
 
     /**
      * Expected to be called after getSpatialQuery, assuming you need to further
      * manipulate the SolrQuery object before executing the query.
      * @return Map with 'resultList' - list of Maps representing results and 'queryResponse' - Solrj query result
      */
-    def querySpatial(SolrQuery solrQuery, lat, lng, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
-        log.debug("spatial query: ${solrQuery}")
-        def result = search(solrQuery)
-        result.resultList.each {
-            it.dist = Haversine.computeMi(lat, lng, Math.toDegrees(it."${SolrUtil.stripFieldName(lat_field)}"), Math.toDegrees(it."${SolrUtil.stripFieldName(lng_field)}"))
-        }
-        return result
-    }
+//    def querySpatial(SolrQuery solrQuery, lat, lng, lat_field = "latitude_rad_d", lng_field = "longitude_rad_d") {
+//        log.debug("spatial query: ${solrQuery}")
+//        def result = search(solrQuery)
+//        result.resultList.each {
+//            it.dist = Haversine.computeMi(lat, lng, Math.toDegrees(it."${SolrUtil.stripFieldName(lat_field)}"), Math.toDegrees(it."${SolrUtil.stripFieldName(lng_field)}"))
+//        }
+//        return result
+//    }
 
 
 }

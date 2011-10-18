@@ -191,18 +191,19 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
                     def objType = (delegate.class.name == 'java.lang.Class') ? delegate.name : delegate.class.name
                     solrQuery.addFilterQuery("${SolrUtil.TYPE_FIELD}:${objType}")
                     //println solrQuery
-                    def result = solrService.search(solrQuery)
+                    def result = [:]
+                    result.solrResult = solrService.search(solrQuery)
 
-                    // GIVING UP ON THE OBJECT RESULTS FOR THE TIME BEING
-                    //def objectList = []
-                    //
-                    //result.queryResponse.getResults().each {
-                    //  def resultAsObject = SolrUtil.resultAsObject(it)
-                    //  if(resultAsObject)
-                    //    objectList << resultAsObject
-                    //}
-                    //
-                    //result.objects = objectList
+//                    GIVING UP ON THE OBJECT RESULTS FOR THE TIME BEING
+                    def objectList = []
+
+                    result.solrResult.queryResponse.getResults().each {
+                      def resultAsObject = SolrUtil.resultAsObject(it)
+                      if(resultAsObject)
+                        objectList << resultAsObject
+                    }
+
+                    result.objects = objectList
 
                     return result
                 }

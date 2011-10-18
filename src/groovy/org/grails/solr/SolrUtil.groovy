@@ -77,7 +77,7 @@ class SolrUtil {
     }
 
     /**
-     * Parse a Solrj result document and attempt to return an object
+     * Parse a Solrj result document and load object by id
      */
     static resultAsObject(doc) {
         def classType = doc.getFieldValue(SolrUtil.TYPE_FIELD)
@@ -86,38 +86,43 @@ class SolrUtil {
         if (!classType)
             return
 
-        def obj = Thread.currentThread().contextClassLoader.loadClass(classType).newInstance()
-        log.trace "Object is ${obj} for classType ${classType}"
-
-        if (!obj)
-            return
-
-        doc.getFieldNames().each {
-            log.trace "Processing field ${it}"
-            if (!IGNORED_PROPS.contains(it)) {
-                log.trace "Field ${it} not ignored"
-
-                //TODO handle hasmany props and the like
-                try {
-                    def theField = stripFieldName(it)
-                    def overrideMethodName = "fromSolr${theField[0].toUpperCase()}${theField.substring(1)}"
-                    def overrideMethod = obj.metaClass.getMetaMethod(overrideMethodName)
-                    if (overrideMethod != null)
-                        obj."${stripFieldName(it)}" = overrideMethod.invoke(delegateDomainOjbect, doc.getFieldValue(it))
-                    else
-                        obj."${theField}" = doc.getFieldValue(it)
-
-                    log.trace "obj.${theField} = ${doc.getFieldValue(it)}"
-
-                } catch (Exception ex) {
-                    log.debug("Couldn't parse field ${it} into object ${ex}")
-                    //println "oh no! blew up on ${it}"
-                }
-            }
+        def clazz = Thread.currentThread().contextClassLoader.loadClass(classType)
+        //load object by id
+        def obj = clazz.get(parseSolrId(doc.getFieldValue("id"))?.id)
+        obj.metaClass.getDistance = {
+           //Distance from index returns in km. Need to convert to meters.
+            def distance = doc.getFieldValue("score")
+            distance = new BigDecimal(distance*1000).intValue()
+            distance
         }
-
-        obj.id = parseSolrId(doc.getFieldValue("id"))?.id
         return obj
+
+//        doc.getFieldNames().each {
+//            log.trace "Processing field ${it}"
+//            if (!IGNORED_PROPS.contains(it)) {
+//                log.trace "Field ${it} not ignored"
+//
+//                //TODO handle hasmany props and the like
+//                try {
+//                    def theField = stripFieldName(it)
+//                    def overrideMethodName = "fromSolr${theField[0].toUpperCase()}${theField.substring(1)}"
+//                    def overrideMethod = obj.metaClass.getMetaMethod(overrideMethodName)
+//                    if (overrideMethod != null)
+//                        obj."${stripFieldName(it)}" = overrideMethod.invoke(delegateDomainOjbect, doc.getFieldValue(it))
+//                    else
+//                        obj."${theField}" = doc.getFieldValue(it)
+//
+//                    log.trace "obj.${theField} = ${doc.getFieldValue(it)}"
+//
+//                } catch (Exception ex) {
+//                    log.debug("Couldn't parse field ${it} into object ${ex}")
+//                    //println "oh no! blew up on ${it}"
+//                }
+//            }
+//        }
+//
+//        obj.id = parseSolrId(doc.getFieldValue("id"))?.id
+//        return obj
     }
 
 }
