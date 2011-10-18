@@ -27,6 +27,7 @@ import java.lang.annotation.*;
 
 /**
  * Describes the Solr annotated API element.
+ * If exists on the field then field will be indexed - otherwise no.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

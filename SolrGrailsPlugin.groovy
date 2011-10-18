@@ -60,6 +60,7 @@ class SolrGrailsPlugin {
     def description = '''\\
 Provides search capabilities for Grails domain model and more using the excellent Solr 
 open source search server through the SolrJ library.
+Changed the concept of Annotation -> Field will be in index ONLY if it is annotated with Solr Ann.
 '''
 
     // URL to the plugin's documentation
