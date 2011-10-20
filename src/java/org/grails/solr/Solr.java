@@ -33,6 +33,10 @@ import java.lang.annotation.*;
 @Target(ElementType.FIELD)
 public @interface Solr {
     String field() default "";
+    //Define field to store translatable values
+    //E.g. if field is 'description', then we will values into 'description_en', 'description_it'
+    //based on supported locales
+    String translatableField() default "";
 
     boolean asText() default false;
 

@@ -5,6 +5,7 @@
   <description>\
 Provides search capabilities for Grails domain model and more using the excellent Solr 
 open source search server through the SolrJ library.
+Changed the concept of Annotation -&gt; Field will be in index ONLY if it is annotated with Solr Ann.
 </description>
   <documentation>http://grails.org/Solr+Plugin</documentation>
   <resources>

@@ -34,6 +34,8 @@ import org.codehaus.groovy.grails.commons.GrailsClassUtils
 import org.grails.solr.SolrIndexListener
 import org.grails.solr.Solr
 import org.grails.solr.SolrUtil
+import org.codehaus.groovy.grails.commons.ConfigurationHolder
+import org.grails.solr.Searchable
 
 class SolrGrailsPlugin {
     // the plugin version
@@ -101,20 +103,24 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
 
                 // define indexSolr() method for all domain classes
                 dc.metaClass.indexSolr << { server = null ->
-                    def delegateDomainOjbect = delegate
-                    def solrService = ctx.getBean("solrService");
-                    if (!server)
-                        server = solrService.getServer()
+                    try {
+                        def delegateDomainOjbect = delegate
+                        def solrService = ctx.getBean("solrService");
+                        if (!server)
+                            server = solrService.getServer()
 
-                    // TODO - is there a bette way to ignore built in parameters?
+                        // TODO - is there a bette way to ignore built in parameters?
 
-                    // create a new solr document
-                    def doc = new SolrInputDocument();
+                        // create a new solr document
+                        def doc = new SolrInputDocument();
 
-                    indexDomain(application, delegateDomainOjbect, doc)
+                        indexDomain(application, delegateDomainOjbect, doc)
 
-                    server.add(doc)
-                    server.commit()
+                        server.add(doc)
+                        server.commit()
+                    } catch (ex) {
+                        log.error "Error occured during indexing process: ${ex.message}", ex
+                    }
 
                 }
 
@@ -198,9 +204,10 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
                     def objectList = []
 
                     result.solrResult.queryResponse.getResults().each {
-                      def resultAsObject = SolrUtil.resultAsObject(it)
-                      if(resultAsObject)
-                        objectList << resultAsObject
+                        def resultAsObject = SolrUtil.resultAsObject(it)
+                        if (resultAsObject) {
+                            objectList << resultAsObject
+                        }
                     }
 
                     result.objects = objectList
@@ -239,6 +246,7 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
     private indexDomain(application, delegateDomainOjbect, doc, depth = 1, prefix = "") {
         def domainDesc = application.getArtefact(DomainClassArtefactHandler.TYPE, delegateDomainOjbect.class.name)
         def clazz = (delegateDomainOjbect.class.name == 'java.lang.Class') ? delegateDomainOjbect : delegateDomainOjbect.class
+        def supportedLanguages = ConfigurationHolder.config.solr.supportedLanguages ?: ["en"]
 
         domainDesc.getProperties().each { prop ->
 
@@ -262,15 +270,16 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
                         def docKey = prefix + fieldName
                         def docValue = delegateDomainOjbect.properties[prop.name]
 
-                        // Removed because of issues with stale indexing when composed index changes
-                        // Recursive indexing of composition fields
-                        //if(GrailsClassUtils.getStaticPropertyValue(docValue.class, "enableSolrSearch") && depth < 3) {
-                        //  def innerDomainDesc = application.getArtefact(DomainClassArtefactHandler.TYPE, docValue.class.name)
-                        //  indexDomain(application, docValue, doc, ++depth, "${docKey}.")
-                        //} else {
-                        //  doc.addField(docKey, docValue)
-                        //}
+                        def clazzProp = clazz.declaredFields.find { field -> field.name == prop.name}
 
+
+                        def translatableFieldName = null
+                        if (clazzProp?.isAnnotationPresent(Solr)) {
+                            def anno = clazzProp.getAnnotation(Solr)
+                            if (anno.translatableField()) {
+                                translatableFieldName = anno.translatableField()
+                            }
+                        }
                         // instead of the composition logic above, if the class is a domain class
                         // then set the value to the Solr Id
                         // TODO - reconsider this indexing logic as a whole
@@ -279,18 +288,21 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
                                 docKey = "store"
                                 doc.addField(docKey, "${docValue.latitude}, ${docValue.longitude}")
                             } else {
-                                doc.addField(docKey, SolrUtil.getSolrId(docValue))
+                                processValues(docValue, doc, docKey, supportedLanguages, translatableFieldName,
+                                            SolrUtil.getSolrId(docValue))
+                            }
+                        } else if (docValue instanceof Collection) {
+                            docValue?.each { obj ->
+                                processValues(obj, doc, docKey, supportedLanguages, translatableFieldName, obj.toString())
                             }
                         } else {
-                            doc.addField(docKey, docValue)
+                            processValues(docValue, doc, docKey, supportedLanguages, translatableFieldName, docValue)
                         }
 
                         // if the annotation asTextAlso is true, then also index this field as a text type independant of how else it's
                         // indexed. The best way to handle the need to do this would be the properly configure the schema.xml file but
                         // for those not familiar with Solr this is an easy way to make sure the field is processed as text which should
                         // be the default search and processed with a WordDelimiterFilter
-
-                        def clazzProp = clazz.declaredFields.find { field -> field.name == prop.name}
                         if (clazzProp && clazzProp.isAnnotationPresent(Solr) && clazzProp.getAnnotation(Solr).asTextAlso()) {
                             doc.addField("${prefix}${prop.name}_t", docValue)
                         }
@@ -307,10 +319,46 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
         // add a field for the id which will be the classname dash id
         doc.addField("${prefix}id", "${delegateDomainOjbect.class.name}-${delegateDomainOjbect.id}")
 
+        //Also adding related to main object objects which can play role as filters
+        if(clazz.methods*.name.contains('getSearchRelatedObjects')){
+            delegateDomainOjbect.getSearchRelatedObjects()?.each{relObject ->
+                relObject.class.declaredFields.each { field ->
+                    if(field.isAnnotationPresent(Solr)){
+                        def fieldName = field.name
+                        def translatableFieldName = null
+                        def anno = field.getAnnotation(Solr)
+                        if (anno.field()){
+                            fieldName = field.getAnnotation(Solr).field()
+                        }
+                        if (anno.translatableField()) {
+                            translatableFieldName = anno.translatableField()
+                        }
+                        def fieldValue = relObject.properties[field.name]
+                        processValues(fieldValue, doc, fieldName, supportedLanguages, translatableFieldName, fieldValue)
+                    }
+                }
+
+            }
+        }
+
         if (doc.getField(SolrUtil.TITLE_FIELD) == null) {
             def solrTitleMethod = delegateDomainOjbect.metaClass.pickMethod("solrTitle")
             def solrTitle = (solrTitleMethod != null) ? solrTitleMethod.invoke(delegateDomainOjbect) : delegateDomainOjbect.toString()
             doc.addField(SolrUtil.TITLE_FIELD, solrTitle)
+        }
+    }
+
+    private void processValues(obj, doc, docKey, ArrayList<String> supportedLanguages,
+                               translatableFieldName, alternativeValue) {
+        if (obj instanceof Searchable) {
+            doc.addField(docKey, obj.toSearchString(null))
+            supportedLanguages.each {langId ->
+                if (translatableFieldName && obj.toSearchString(langId)) {
+                    doc.addField("${translatableFieldName}_${langId}", obj.toSearchString(langId))
+                }
+            }
+        } else {
+            doc.addField(docKey, alternativeValue)
         }
     } // indexDomain
 
