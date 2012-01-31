@@ -39,7 +39,7 @@ import org.grails.solr.Searchable
 
 class SolrGrailsPlugin {
     // the plugin version
-    def version = "0.3.1-geo"
+    def version = "0.3.2-geo"
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "1.1 > *"
     // the other plugins this plugin depends on
@@ -287,6 +287,7 @@ Changed the concept of Annotation -> Field will be in index ONLY if it is annota
                             if (fieldName == "location") {
                                 docKey = "store"
                                 doc.addField(docKey, "${docValue.latitude}, ${docValue.longitude}")
+                                processValues(docValue, doc, fieldName, supportedLanguages, translatableFieldName, docValue)
                             } else {
                                 processValues(docValue, doc, docKey, supportedLanguages, translatableFieldName,
                                             SolrUtil.getSolrId(docValue))
